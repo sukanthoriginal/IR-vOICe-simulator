@@ -13,6 +13,9 @@ performance with vOICe soundscapes generated from simulated infrared frames.
   [`ishihara/README.md`](ishihara/README.md) for the experimental rationale and
   controls.
 
+The advanced combinatorial experiment is maintained separately in
+[`IR-ishihara-advanced`](https://github.com/sukanthoriginal/IR-ishihara-advanced).
+
 ## Generate IR-Ishihara stimuli
 
 The generator expects the companion `IR-vOICe` repository beside this one and
@@ -57,7 +60,7 @@ same three-sweep presentation timing and avoids sound-versus-silence cues.
 On macOS, double-click the packaged **IR Ishihara Simulator.app**. Its bundle
 contains the server, task UI, and generated audio bank, so it does not need
 permission to read the source repository. It starts a localhost server on port
-8001, verifies the Ishihara page, and opens a standalone fullscreen Chrome
+8127, verifies the Ishihara page, and opens a standalone fullscreen Chrome
 window. Completed CSVs are saved under
 `~/Library/Application Support/IR Ishihara Simulator/test_data/`.
 
