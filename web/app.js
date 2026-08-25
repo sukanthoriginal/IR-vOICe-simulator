@@ -11,6 +11,11 @@ const progressEl = document.getElementById('progress');
 const summaryEl = document.getElementById('summary');
 const saveStatusEl = document.getElementById('save-status');
 
+const DISPLAY_GEOMETRY_VERSION = 'soundscape-native-178x64-v1';
+const SOUNDSCAPE_ASPECT_RATIO = 178 / 64;
+const MAX_GRID_WIDTH_CSS_PX = 2020;
+const MAX_GRID_HEIGHT_CSS_PX = MAX_GRID_WIDTH_CSS_PX / SOUNDSCAPE_ASPECT_RATIO;
+
 let manifest = null;
 let audioCtx = null;
 let audioBuffers = {}; // wav filename -> AudioBuffer (audio modality only)
@@ -45,6 +50,7 @@ modalitySelect.addEventListener('change', () => {
   // record a value that doesn't apply.
   armField.classList.toggle('hidden', modalitySelect.value === 'visual');
 });
+window.addEventListener('resize', fitGridToSoundscape);
 
 async function startSession() {
   const grid = document.getElementById('grid-select').value;
@@ -71,6 +77,12 @@ async function startSession() {
     return;
   }
   manifest = await res.json();
+  if (manifest.image_width !== 178 || manifest.image_height !== 64) {
+    alert(`This apparatus requires a 178x64 soundscape manifest; received ${manifest.image_width}x${manifest.image_height}.`);
+    document.getElementById('start-btn').disabled = false;
+    document.getElementById('start-btn').textContent = 'Start block';
+    return;
+  }
   maxErrorPx = Math.hypot(manifest.image_width, manifest.image_height);
   chanceErrorPx = estimateChanceErrorPx(manifest);
 
@@ -102,9 +114,10 @@ async function startSession() {
   session = { participantId, arm, modality, mode, numTrials, trialIndex: 0 };
   trialLog = [];
 
-  buildGrid();
   setupScreen.classList.add('hidden');
   trialScreen.classList.remove('hidden');
+  buildGrid();
+  fitGridToSoundscape();
   runNextTrial();
 }
 
@@ -137,6 +150,36 @@ function buildGrid() {
   gridEl.addEventListener('click', onGridClick);
 }
 
+function fitGridToSoundscape() {
+  if (!manifest || trialScreen.classList.contains('hidden')) return;
+  const availableWidth = Math.min(trialScreen.clientWidth, MAX_GRID_WIDTH_CSS_PX);
+  const chromeHeight = trialStatus.offsetHeight + progressEl.offsetHeight + 24;
+  const availableHeight = Math.min(
+    Math.max(1, trialScreen.clientHeight - chromeHeight),
+    MAX_GRID_HEIGHT_CSS_PX,
+  );
+  const width = Math.min(availableWidth, availableHeight * SOUNDSCAPE_ASPECT_RATIO);
+  const height = width / SOUNDSCAPE_ASPECT_RATIO;
+  gridEl.style.width = `${width}px`;
+  gridEl.style.height = `${height}px`;
+}
+
+function auditGridGeometry(rect) {
+  const cssPxPerAudioColumn = rect.width / manifest.image_width;
+  const cssPxPerAudioRow = rect.height / manifest.image_height;
+  return {
+    display_geometry_version: DISPLAY_GEOMETRY_VERSION,
+    grid_width_css_px: Math.round(rect.width * 100) / 100,
+    grid_height_css_px: Math.round(rect.height * 100) / 100,
+    grid_aspect_ratio: Math.round((rect.width / rect.height) * 1000000) / 1000000,
+    css_px_per_audio_column: Math.round(cssPxPerAudioColumn * 1000000) / 1000000,
+    css_px_per_audio_row: Math.round(cssPxPerAudioRow * 1000000) / 1000000,
+    display_axis_stretch_y_over_x: Math.round(
+      (cssPxPerAudioRow / cssPxPerAudioColumn) * 1000000,
+    ) / 1000000,
+  };
+}
+
 function runNextTrial() {
   stopCurrentStimulus();
   if (session.trialIndex >= session.numTrials) {
@@ -147,6 +190,7 @@ function runNextTrial() {
   currentTrial = { cell, awaitingClick: false }; // not answerable yet -- awaiting recenter first
 
   progressEl.textContent = `Trial ${session.trialIndex + 1} / ${session.numTrials}`;
+  fitGridToSoundscape();
   awaitRecenter(beginTrialStimulus);
 }
 
@@ -264,6 +308,7 @@ function onGridClick(evt) {
   stopCurrentStimulus();
 
   const rect = gridEl.getBoundingClientRect();
+  const geometryAudit = auditGridGeometry(rect);
   const xImg = (evt.clientX - rect.left) / rect.width * manifest.image_width;
   const yImg = (evt.clientY - rect.top) / rect.height * manifest.image_height;
 
@@ -312,6 +357,7 @@ function onGridClick(evt) {
     // CSV alone, without re-simulating or needing the grid's manifest.json.
     chance_error_px: Math.round(chanceErrorPx * 10) / 10,
     pct_better_than_chance: Math.round(pctBetterThanChance * 10) / 10,
+    ...geometryAudit,
     timestamp: new Date().toISOString(),
   });
 
@@ -383,6 +429,7 @@ function retryBlock() {
   currentTrial = null;
   endScreen.classList.add('hidden');
   trialScreen.classList.remove('hidden');
+  fitGridToSoundscape();
   progressEl.textContent = `0 / ${session.numTrials}`;
   runNextTrial();
 }
@@ -406,7 +453,10 @@ function buildCsv() {
     'image_width', 'image_height', 'trial_index',
     'target_cell', 'target_x_px', 'target_y_px', 'click_x_px', 'click_y_px',
     'correct', 'rt_ms', 'l2_error_px', 'cells_off', 'l2_error_norm',
-    'l2_error_pct_of_max', 'chance_error_px', 'pct_better_than_chance', 'timestamp'];
+    'l2_error_pct_of_max', 'chance_error_px', 'pct_better_than_chance',
+    'display_geometry_version', 'grid_width_css_px', 'grid_height_css_px',
+    'grid_aspect_ratio', 'css_px_per_audio_column', 'css_px_per_audio_row',
+    'display_axis_stretch_y_over_x', 'timestamp'];
   const lines = [cols.join(',')];
   for (const row of trialLog) {
     lines.push(cols.map(c => row[c]).join(','));

@@ -12,7 +12,7 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 16px 20px;
+    padding: 16px 14px;
     box-sizing: border-box;
   }
   h1 { font-size: 18px; font-weight: 500; color: #999; margin: 0 0 12px; flex: 0 0 auto; }
@@ -25,6 +25,7 @@
     display: flex;
     flex-direction: column;
     align-items: center;
+    gap: 12px;
   }
   .hidden { display: none; }
   label { display: block; margin: 12px 0 4px; text-align: left; }
@@ -40,7 +41,7 @@
     color: #fff;
   }
   button:disabled { background: #444; cursor: default; }
-  #trial-status { margin-bottom: 12px; font-size: 14px; color: #aaa; min-height: 20px; flex: 0 0 auto; }
+  #trial-status { font-size: 14px; color: #aaa; min-height: 20px; flex: 0 0 auto; }
   #grid {
     position: relative;
     background: #222;
@@ -48,18 +49,17 @@
     cursor: crosshair;
     display: grid;
     margin: 0 auto;
-    /* Fills all remaining space in #trial-screen (a column flexbox) at a
-       16:10 shape. This is independent of the underlying 178x64 image aspect
-       ratio -- click coords are scaled to image space per-axis in app.js, so
-       the on-screen box shape doesn't need to match the image's native
-       ratio. Letting flex-grow + aspect-ratio + max-width/max-height resolve
-       the size means the browser computes the actual available space,
-       instead of us hand-guessing viewport-minus-chrome pixel budgets. */
-    flex: 1 1 auto;
+    /* app.js fits this box uniformly to the native 178x64 soundscape raster.
+       At a 2048 px-wide fullscreen viewport the 14 px body margins leave a
+       2020 px maximum width, producing an exact 2020x726.29 px rendering
+       (reported as approximately 2020x726). No independent x/y stretch is
+       permitted. */
+    flex: 0 0 auto;
     min-height: 0;
-    aspect-ratio: 16 / 10;
+    aspect-ratio: 178 / 64;
     max-width: 100%;
     max-height: 100%;
+    box-sizing: border-box;
   }
   .cell { border: 1px solid #333; }
   .flash {
@@ -139,7 +139,7 @@
     0%, 100% { transform: scale(1); opacity: 0.85; }
     50% { transform: scale(1.12); opacity: 1; }
   }
-  #progress { margin-top: 10px; font-size: 13px; color: #777; flex: 0 0 auto; }
+  #progress { font-size: 13px; color: #777; flex: 0 0 auto; }
   #summary { text-align: left; font-size: 14px; line-height: 1.6; }
   #save-status { margin-top: 10px; font-size: 13px; color: #999; }
   #save-status.error { color: #e28080; }
@@ -151,6 +151,7 @@
 
 <div id="setup-screen" class="screen">
   <p>Listen to each soundscape and click the grid cell you think the sound came from.</p>
+  <p style="color:#999;font-size:13px">Display geometry: expanded 178×64 soundscape aspect, up to approximately 2020×726 CSS px.</p>
   <label for="participant-id">Participant ID</label>
   <input id="participant-id" type="text" placeholder="e.g. your name" required>
   <label for="modality-select">Modality</label>

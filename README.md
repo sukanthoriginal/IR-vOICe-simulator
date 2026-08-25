@@ -16,6 +16,12 @@ performance with vOICe soundscapes generated from simulated infrared frames.
 The advanced combinatorial experiment is maintained separately in
 [`IR-ishihara-advanced`](https://github.com/sukanthoriginal/IR-ishihara-advanced).
 
+The localization task displays its response field at the soundscape's native
+178:64 aspect ratio. It expands uniformly to a maximum width of 2020 CSS pixels
+(2020×726.29, approximately 2020×726) and shrinks uniformly when the viewport
+is smaller. Every CSV row records the actual rendered dimensions, per-axis
+scale, aspect ratio, and apparatus geometry version.
+
 ## Generate IR-Ishihara stimuli
 
 The generator expects the companion `IR-vOICe` repository beside this one and
