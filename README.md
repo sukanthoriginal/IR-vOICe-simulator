@@ -94,6 +94,20 @@ When run manually, completed blocks save to the gitignored `test_data/`
 directory. The packaged app uses its Application Support directory described
 above. If the save endpoint is unavailable, the browser downloads the CSV.
 
+The server accepts `IR_VOICE_TEST_DATA_DIR` for its primary CSV directory and
+`IR_VOICE_TEST_DATA_MIRROR_DIR` for an identical second copy. The native-aspect
+Desktop launcher uses Application Support as the primary and
+`/Users/sukanth/Dev/Lossfunk/ir-results/l2-native-aspect/` as the mirror.
+
+Build the self-contained native-aspect launcher with:
+
+```bash
+tools/package_l2_native_app.sh
+```
+
+The packager refuses to overwrite an existing app; pass another absolute
+output path to build a verification copy.
+
 ## IR ambiguity-grammar conditions
 
 - **Mixed:** paired visible-probe and aligned-IR-probe trials for the same
