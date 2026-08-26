@@ -3,6 +3,7 @@ on run
 	set serverPort to "8000"
 	set appURL to "http://localhost:8000/web/index.html"
 	set chromeApp to "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+	set mirrorDataPath to "/Users/sukanth/Dev/Lossfunk/ir-results/l2-localization"
 
 	-- Start the local server if it isn't already running.
 	-- server.py (not plain http.server) is required: it also handles the
@@ -10,7 +11,7 @@ on run
 	-- straight into test_data/.
 	set serverCheck to do shell script "lsof -ti:" & serverPort & " || true"
 	if serverCheck is "" then
-		do shell script "cd " & quoted form of repoPath & " && nohup python3 server.py " & serverPort & " > /tmp/voice_sim_server.log 2>&1 & disown"
+		do shell script "cd " & quoted form of repoPath & " && IR_VOICE_TEST_DATA_MIRROR_DIR=" & quoted form of mirrorDataPath & " nohup python3 server.py " & serverPort & " > /tmp/voice_sim_server.log 2>&1 & disown"
 		delay 1
 	end if
 

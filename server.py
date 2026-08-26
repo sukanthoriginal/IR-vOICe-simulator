@@ -6,7 +6,8 @@ plus one extra endpoint the browser uses to save a finished run straight
 to disk:
 
     POST /api/save-run   body: {"filename": "...", "csv": "..."}
-    -> writes test_data/<sanitized filename>
+    -> writes test_data/<sanitized filename>, or IR_VOICE_TEST_DATA_DIR when set
+    -> also mirrors the same bytes to IR_VOICE_TEST_DATA_MIRROR_DIR when set
 
 test_data/ is gitignored, so results never end up in the (public) repo.
 Binds to localhost only -- not reachable from the rest of the LAN.
@@ -19,7 +20,16 @@ import socketserver
 import sys
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
-TEST_DATA_DIR = os.path.join(ROOT, "test_data")
+TEST_DATA_DIR = os.environ.get(
+    "IR_VOICE_TEST_DATA_DIR",
+    os.path.join(ROOT, "test_data"),
+)
+MIRROR_TEST_DATA_DIR = os.environ.get("IR_VOICE_TEST_DATA_MIRROR_DIR")
+TEST_DATA_DIRS = tuple(dict.fromkeys(
+    os.path.realpath(path)
+    for path in (TEST_DATA_DIR, MIRROR_TEST_DATA_DIR)
+    if path
+))
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8000
 
 SAFE_NAME = re.compile(r"[^A-Za-z0-9_.-]+")
@@ -32,6 +42,18 @@ MAX_BODY_BYTES = 20_000_000  # 20MB sanity cap; a run's CSV is a few KB.
 # these two. Stimuli (wav/png) don't change once generated, so those keep
 # normal caching for load performance.
 NO_CACHE_PATHS = ("/web/index.html", "/web/app.js", "/", "")
+
+
+def save_result_copies(safe_name, csv_text):
+    """Write identical result bytes to every configured result directory."""
+    destinations = []
+    for directory in TEST_DATA_DIRS:
+        os.makedirs(directory, exist_ok=True)
+        destination = os.path.join(directory, safe_name)
+        with open(destination, "w", newline="") as output:
+            output.write(csv_text)
+        destinations.append(destination)
+    return destinations
 
 
 class Handler(http.server.SimpleHTTPRequestHandler):
@@ -70,20 +92,26 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         if not safe_name.endswith(".csv"):
             safe_name += ".csv"
 
-        os.makedirs(TEST_DATA_DIR, exist_ok=True)
-        dest = os.path.join(TEST_DATA_DIR, safe_name)
-        with open(dest, "w", newline="") as f:
-            f.write(csv_text)
+        try:
+            destinations = save_result_copies(safe_name, csv_text)
+        except OSError as error:
+            self.send_error(500, f"Could not save every CSV copy: {error}")
+            return
 
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
         self.end_headers()
-        self.wfile.write(json.dumps({"saved": True, "path": dest}).encode())
+        self.wfile.write(json.dumps({
+            "saved": True,
+            "path": destinations[0],
+            "paths": destinations,
+        }).encode())
 
 
 if __name__ == "__main__":
-    os.makedirs(TEST_DATA_DIR, exist_ok=True)
+    for result_directory in TEST_DATA_DIRS:
+        os.makedirs(result_directory, exist_ok=True)
     with socketserver.TCPServer(("127.0.0.1", PORT), Handler) as httpd:
         print(f"Serving {ROOT} at http://localhost:{PORT}")
-        print(f"POST /api/save-run writes into {TEST_DATA_DIR}")
+        print(f"POST /api/save-run writes into {', '.join(TEST_DATA_DIRS)}")
         httpd.serve_forever()
